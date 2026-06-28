@@ -1,0 +1,65 @@
+#define BLYNK_TEMPLATE_ID "TMPL32UtKlr_a"
+#define BLYNK_TEMPLATE_NAME "Field 1"
+#define BLYNK_AUTH_TOKEN "SaNAyGV3_A28bNIOhuKfMC3tlYEOCLe1"
+
+#include "DHT.h"
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+
+// WiFi credentials
+char ssid[] = "MOTOG40";
+char pass[] = "12345678";
+
+// Pins
+int dhtPin = 25;          // DHT sensor
+int soilAnalogPin = 32;   // Soil analog pin
+
+DHT dht(dhtPin, DHT22);   // DHT22 sensor
+
+BlynkTimer timer;
+
+void sendSensorData() {
+  // Read DHT sensor
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+
+  // Read soil sensor
+  int soilAnalog = analogRead(soilAnalogPin);
+
+  // Convert to 0-100% (dry=0, wet=100)
+  int moisturePercent = map(soilAnalog, 4095, 0, 0, 100);
+  moisturePercent = constrain(moisturePercent, 0, 100);
+
+  // Check DHT reading
+  if (!isnan(h) && !isnan(t)) {
+    Blynk.virtualWrite(V1, t);  // Temperature
+    Blynk.virtualWrite(V2, h);  // Humidity
+  }
+
+  // Send moisture %
+  Blynk.virtualWrite(V3, moisturePercent);
+
+  Serial.println("-----------------------------");
+  Serial.print("Temperature: "); Serial.print(t); Serial.println(" °C");
+  Serial.print("Humidity: "); Serial.print(h); Serial.println(" %");
+  Serial.print("Soil Moisture: "); Serial.print(moisturePercent); Serial.println(" %");
+  Serial.println("-----------------------------");
+}
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+
+  Serial.println("ESP32 Temperature, Humidity & Soil Moisture Monitor");
+
+  // Connect to Blynk
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+  // Send sensor data every 2 seconds
+  timer.setInterval(2000L, sendSensorData);
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
